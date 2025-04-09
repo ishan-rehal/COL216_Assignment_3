@@ -1,4 +1,4 @@
-#include "TraceParser.hpp"
+#include "../header/TraceParser.hpp"
 #include <fstream>
 #include <sstream>
 #include <iostream>
