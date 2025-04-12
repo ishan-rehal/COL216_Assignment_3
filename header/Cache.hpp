@@ -5,6 +5,7 @@
 #include <vector>
 #include "DataArray.hpp"
 #include "TagArray.hpp"
+#include "Bus.hpp"  // Added for bus transactions support
 
 // Define MESI protocol states.
 enum class MESIState { Modified, Exclusive, Shared, Invalid };
@@ -29,10 +30,17 @@ public:
     // 'cycles' returns the additional delay cycles (if a miss, or write-back delay).
     // Returns true on hit.
     bool read(uint32_t address, int &cycles);
+    // New overload: simulate a cache read with a Bus pointer and processor id.
+    bool read(uint32_t address, int &cycles, Bus *bus, int processorId);
     
     // Simulate a cache write.
     // Returns true on hit.
     bool write(uint32_t address, int &cycles);
+    // New overload: simulate a cache write with a Bus pointer and processor id.
+    bool write(uint32_t address, int &cycles, Bus *bus, int processorId);
+    
+    // New: Handle a bus transaction (for snooping and MESI updates).
+    void handleBusTransaction(const BusTransaction &tx);
     
 private:
     int s;                // Number of set index bits.

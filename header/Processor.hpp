@@ -5,12 +5,17 @@
 #include <vector>
 #include "Cache.hpp"
 #include "TraceParser.hpp"
+#include "Bus.hpp"  // Added for bus transactions support
 
 class Processor {
 public:
     Processor(int id, const std::string &traceFile, Cache* cache);
+    
     // Simulate one cycle for this processor.
     void executeCycle();
+    // New overload: simulate one cycle for this processor with a Bus pointer.
+    void executeCycle(Bus *bus);
+    
     // Check if the processor has finished processing its trace.
     bool isFinished() const;
     // Get total and idle cycle counts for statistics.
