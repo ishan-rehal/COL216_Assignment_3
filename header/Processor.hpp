@@ -9,7 +9,7 @@
 
 class Processor {
 public:
-    Processor(int id, const std::string &traceFile, Cache* cache);
+    Processor(int id, const std::string &traceFile, Cache* cache, Bus* bus);
     
     // Simulate one cycle for this processor.
     void executeCycle();
@@ -25,6 +25,7 @@ public:
 private:
     int processorId;
     Cache* l1Cache;
+    Bus* bus;  // Pointer to the bus for bus transactions.
     std::vector<Instruction> instructions;
     int currentInstructionIndex;
     // Stall counter for memory delays.

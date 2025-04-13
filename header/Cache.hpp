@@ -41,6 +41,10 @@ public:
     // Called each cycle to check pending delay.
     int getPendingCycleCount() const;
     bool isTransactionPending() const;
+        // --- debugging helpers ---------------------------------
+        // bool        isTransactionPending() const { return pendingTransaction; }
+        // int         getPendingCycleCount() const { return pendingCycleCount; }
+        uint32_t    getPendingAddress()   const { return pendingAddress; }
     void decrementPendingCycle();
 
     // Returns true if the cache holds the block (only if in Shared or Exclusive state).

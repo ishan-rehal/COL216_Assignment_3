@@ -39,12 +39,12 @@ Cache::Cache(int s, int E, int b, int processorId)
 uint32_t Cache::extractTag(uint32_t address) const
 {
     // (Original implementation assumed word addressing; adjust as needed.)
-    return address >> (s + (b - 2));
+    return address >> (s + (b));
 }
 
 int Cache::extractSetIndex(uint32_t address) const
 {
-    return (address >> (b - 2)) & ((1 << s) - 1);
+    return (address >> (b)) & ((1 << s) - 1);
 }
 
 int Cache::extractBlockOffset(uint32_t address) const
@@ -163,45 +163,42 @@ bool Cache::write(uint32_t address, int &cycles, Bus *bus)
 
 //------------------------------------------------------------------
 // resolvePendingTransaction: Called by the Bus to set the delay and install the block.
-void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address, int delay)
-{
+void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address, int delay) {
     if (!pendingTransaction || pendingAddress != address)
         return;
-    pendingCycleCount = delay;
-    int setIndex = extractSetIndex(address);
-    uint32_t tag = extractTag(address);
-    int victim = 0;
-    for (int way = 0; way < E; ++way)
-    {
-        if (!meta[setIndex][way].valid)
-        {
-            victim = way;
-            break;
+    if (pendingCycleCount == -1) {
+        pendingCycleCount = delay; // Set the computed delay, but do not clear the pending flag yet.
+        // Optionally, if your design installs the block immediately, do that here.
+        int setIndex = extractSetIndex(address);
+        uint32_t tag = extractTag(address);
+        int victim = 0;
+        for (int way = 0; way < E; ++way) {
+            if (!meta[setIndex][way].valid) {
+                victim = way;
+                break;
+            }
+            if (meta[setIndex][way].lruCounter > meta[setIndex][victim].lruCounter) {
+                victim = way;
+            }
         }
-        if (meta[setIndex][way].lruCounter > meta[setIndex][victim].lruCounter)
-        {
-            victim = way;
+        if (type == BusTransactionType::BusRd) {
+            tagArray.tags[setIndex][victim] = tag;
+            meta[setIndex][victim].valid = true;
+            meta[setIndex][victim].dirty = false;
+            meta[setIndex][victim].state = (delay == 100) ? MESIState::Exclusive : MESIState::Shared;
+        } else {
+            tagArray.tags[setIndex][victim] = tag;
+            meta[setIndex][victim].valid = true;
+            meta[setIndex][victim].dirty = true;
+            meta[setIndex][victim].state = MESIState::Modified;
         }
+        updateLRU(setIndex, victim);
     }
-    if (type == BusTransactionType::BusRd)
-    {
-        tagArray.tags[setIndex][victim] = tag;
-        meta[setIndex][victim].valid = true;
-        meta[setIndex][victim].dirty = false;
-        meta[setIndex][victim].state = (delay == 100) ? MESIState::Exclusive : MESIState::Shared;
-    }
-    else
-    {
-        // For BusRdWITWr and BusUpgr, install as Modified.
-        tagArray.tags[setIndex][victim] = tag;
-        meta[setIndex][victim].valid = true;
-        meta[setIndex][victim].dirty = true;
-        meta[setIndex][victim].state = MESIState::Modified;
-    }
-    updateLRU(setIndex, victim);
-    pendingTransaction = false;
-    pendingCycleCount = 0;
+    // Do NOT clear pendingTransaction immediately here.
+    // Instead, once decrementPendingCycle() is called enough times (until delay becomes 0),
+    // then pendingTransaction will be cleared.
 }
+
 
 //------------------------------------------------------------------
 // Returns the current pending cycle count.
@@ -219,17 +216,16 @@ bool Cache::isTransactionPending() const
 
 //------------------------------------------------------------------
 // Called each cycle to decrement the pending transaction's delay.
-void Cache::decrementPendingCycle()
-{
-    if (pendingTransaction && pendingCycleCount > 0)
-    {
+void Cache::decrementPendingCycle() {
+    if (pendingTransaction && pendingCycleCount > 0) {
         pendingCycleCount--;
-        if (pendingCycleCount == 0)
-        {
+        if (pendingCycleCount == 0) {
+            // Now that the delay is over, clear the pending flag.
             pendingTransaction = false;
         }
     }
 }
+
 
 //------------------------------------------------------------------
 // Utility: Checks if this cache holds the block for a given address.

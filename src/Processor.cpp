@@ -2,9 +2,17 @@
 #include <iostream>
 #include <fstream>
 
-Processor::Processor(int id, const std::string &traceFile, Cache *cache)
-    : processorId(id), l1Cache(cache), currentInstructionIndex(0),
-      stallCounter(0), totalCycles(0), idleCycles(0)
+Processor::Processor(int id,
+                     const std::string &traceFile,
+                     Cache *cache,
+                     Bus *busPtr)
+    : processorId(id),
+      l1Cache(cache),
+      bus(busPtr), // ← store pointer
+      currentInstructionIndex(0),
+      stallCounter(0),
+      totalCycles(0),
+      idleCycles(0)
 {
     loadTrace(traceFile);
 }
@@ -32,34 +40,23 @@ void Processor::executeCycle()
     }
 
     Instruction &instr = instructions[currentInstructionIndex];
-    int cyclesForOperation = 0;
-    bool hit = false;
+    int  dummy = 0;
+    bool hit   = false;
 
     if (instr.op == OperationType::READ)
-    {
-        hit = l1Cache->read(instr.address, cyclesForOperation);
-    }
-    else if (instr.op == OperationType::WRITE)
-    {
-        hit = l1Cache->write(instr.address, cyclesForOperation);
-    }
-
-    if (hit)
-    {
-        totalCycles++;
-    }
+        hit = l1Cache->read(instr.address, dummy, bus);   // ← pass bus
     else
-    {
-        stallCounter = cyclesForOperation - 1;
-        totalCycles++;
-    }
+        hit = l1Cache->write(instr.address, dummy, bus);  // ← pass bus
+
+    totalCycles++;          // one core cycle always elapses
 
     currentInstructionIndex++;
 }
 
 bool Processor::isFinished() const
 {
-    return (currentInstructionIndex >= instructions.size() && stallCounter == 0);
+    return (currentInstructionIndex >= instructions.size() &&
+            !l1Cache->isTransactionPending());
 }
 
 int Processor::getTotalCycles() const
