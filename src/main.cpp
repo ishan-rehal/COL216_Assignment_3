@@ -4,13 +4,14 @@
 #include <cstring>
 #include "Processor.hpp"
 #include "Cache.hpp"
+#include "Bus.hpp"
 
 // Structure for simulation configuration.
 struct SimulationConfig {
     std::string tracePrefix;
-    int s;  // Number of set index bits.
-    int E;  // Associativity.
-    int b;  // Block bits (block size in bytes = 2^b).
+    int s; // Number of set index bits.
+    int E; // Associativity.
+    int b; // Block bits (block size in bytes = 2^b).
     std::string outputFilename;
 };
 
@@ -47,16 +48,20 @@ SimulationConfig parseArguments(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
     // Parse command-line arguments.
     SimulationConfig config = parseArguments(argc, argv);
-    
+
     const int numCores = 4; // Quad-core simulation.
     std::vector<Processor*> processors;
     std::vector<Cache*> caches;
     
+    // Create a Bus instance.
+    Bus bus;
+    
     // Create a separate cache and processor for each core.
+    // IMPORTANT: When constructing caches, pass the processor's id.
     for (int i = 0; i < numCores; ++i) {
         // Construct trace file name (e.g., "app1_proc0.trace").
         std::string traceFile = config.tracePrefix + "_proc" + std::to_string(i) + ".trace";
-        Cache* cache = new Cache(config.s, config.E, config.b);
+        Cache* cache = new Cache(config.s, config.E, config.b, i);  // Pass processor id to cache
         caches.push_back(cache);
         Processor* proc = new Processor(i, traceFile, cache);
         processors.push_back(proc);
@@ -67,12 +72,16 @@ int main(int argc, char* argv[]) {
     bool allFinished = false;
     while (!allFinished) {
         allFinished = true;
+        // Each processor executes its cycle.
         for (int i = 0; i < numCores; ++i) {
             if (!processors[i]->isFinished()) {
                 processors[i]->executeCycle();
                 allFinished = false;
             }
         }
+        // Resolve bus transactions at the end of the cycle.
+        bus.resolveTransactions(caches);
+        
         globalClock++;
     }
     
@@ -94,3 +103,4 @@ int main(int argc, char* argv[]) {
     
     return 0;
 }
+// End of main.cpp

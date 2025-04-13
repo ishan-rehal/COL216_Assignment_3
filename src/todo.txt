@@ -1,0 +1,2 @@
+write hit me immediate invalidation
+Delay for evicting a victim whose state is modified

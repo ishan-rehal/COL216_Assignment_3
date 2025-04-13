@@ -5,39 +5,44 @@
 #include <cstdint>
 
 // Define the bus transaction types.
-// Note: We've included a third type for "read with intent to write".
 enum class BusTransactionType {
     BusRd,       // Read miss transaction.
-    BusRdX,      // Write hit transaction that requires invalidation.
-    BusRdWITWr   // Read with intent to write (used for write misses).
+    BusRdX,      // Write transaction (write miss or write hit when not in Shared).
+    BusRdWITWr,  // Read with intent to write (for write misses).
+    BusUpgr      // Upgrade: write hit on a Shared block that must cause immediate invalidation.
 };
 
 // Structure representing a bus transaction.
 struct BusTransaction {
     BusTransactionType type;  // Type of bus transaction.
-    uint32_t address;         // Memory address involved in the transaction.
+    uint32_t address;         // Memory address involved (assumed block-aligned).
     int sourceProcessorId;    // ID of the processor that initiated the transaction.
 };
 
-// The Bus class declaration.
 class Bus {
 public:
-    // Constructor.
     Bus();
 
-    // Adds a new bus transaction to the internal queue.
+    // Adds a new bus transaction to the appropriate queue.
     void addTransaction(const BusTransaction &transaction);
 
-    // Resolves all queued transactions.
-    // Parameter: a vector of pointers to Cache objects that should snoop and update their state.
+    // Resolves queued transactions.
+    // This function is called each simulation cycle.
+    // BusUpgr transactions are processed first (from upgradeQueue),
+    // then the normal transactions (from transactions vector) are processed.
     void resolveTransactions(const std::vector<class Cache*>& caches);
 
-    // Clears the transaction queue.
+    // Clears the transaction queues.
     void clearTransactions();
     
+    // Process a BusUpgr transaction immediately.
+    void processUpgrade(const BusTransaction &tx, const std::vector<class Cache*>& caches);
+    
 private:
-    // Container holding the bus transactions for the current cycle.
+    // FIFO queue for normal transactions.
     std::vector<BusTransaction> transactions;
+    // Separate high-priority queue for upgrade transactions.
+    std::vector<BusTransaction> upgradeQueue;
 };
 
 #endif // BUS_HPP

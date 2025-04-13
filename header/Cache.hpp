@@ -5,7 +5,7 @@
 #include <vector>
 #include "DataArray.hpp"
 #include "TagArray.hpp"
-#include "Bus.hpp"  // Added for bus transactions support
+#include "Bus.hpp"  // For bus transactions
 
 // Define MESI protocol states.
 enum class MESIState { Modified, Exclusive, Shared, Invalid };
@@ -22,49 +22,63 @@ class Cache {
 public:
     // Constructor parameters:
     // s: number of set index bits (numSets = 2^s)
-    // E: associativity (number of ways per set)
+    // E: associativity (number of ways = 2^E)
     // b: block bits (blockSizeBytes = 2^b)
-    Cache(int s, int E, int b);
-    
-    // Simulate a cache read.
-    // 'cycles' returns the additional delay cycles (if a miss, or write-back delay).
-    // Returns true on hit.
+    // processorId: identifier for the processor owning this cache.
+    Cache(int s, int E, int b, int processorId);
+
+    // Basic read/write functions.
     bool read(uint32_t address, int &cycles);
-    // New overload: simulate a cache read with a Bus pointer and processor id.
-    bool read(uint32_t address, int &cycles, Bus *bus, int processorId);
-    
-    // Simulate a cache write.
-    // Returns true on hit.
     bool write(uint32_t address, int &cycles);
-    // New overload: simulate a cache write with a Bus pointer and processor id.
-    bool write(uint32_t address, int &cycles, Bus *bus, int processorId);
-    
-    // New: Handle a bus transaction (for snooping and MESI updates).
+
+    // Bus-aware read/write functions.
+    bool read(uint32_t address, int &cycles, Bus *bus);
+    bool write(uint32_t address, int &cycles, Bus *bus);
+
+    // Called by the Bus to resolve a pending transaction.
+    void resolvePendingTransaction(BusTransactionType type, uint32_t address, int delay);
+
+    // Called each cycle to check pending delay.
+    int getPendingCycleCount() const;
+    bool isTransactionPending() const;
+    void decrementPendingCycle();
+
+    // Returns true if the cache holds the block (only if in Shared or Exclusive state).
+    bool hasBlock(uint32_t address) const;
+
+    // Accessors.
+    int getBlockSizeBytes() const { return blockSizeBytes; }
+    int getProcessorId() const { return processorId; }
+
+    // Bus snooping: updates MESI state for a transaction.
     void handleBusTransaction(const BusTransaction &tx);
-    
+
+    // New: Invalidate the block if it is in Shared state.
+    void invalidateShared(uint32_t address);
+
 private:
     int s;                // Number of set index bits.
-    int E;                // Associativity (number of ways per set).
+    int E;                // Associativity exponent (number of ways = 2^E).
     int b;                // Block bits.
     int numSets;          // Calculated as 2^s.
     int blockSizeBytes;   // Calculated as 2^b.
-    
-    DataArray dataArray;  // The data storage array.
-    TagArray tagArray;    // The tag storage array.
-    
-    // Metadata for each cache line: [set][way].
+    int processorId;      // Processor ID.
+
+    DataArray dataArray;  // Data storage array.
+    TagArray tagArray;    // Tag storage array.
     std::vector<std::vector<CacheLineMeta>> meta;
-    
+
     // Helper functions.
-    // extractTag extracts the tag from the address.
     uint32_t extractTag(uint32_t address) const;
-    // extractSetIndex extracts the set index from the address.
     int extractSetIndex(uint32_t address) const;
-    // extractBlockOffset extracts the word offset (index within the block)
-    // Given each word is 4 bytes, offset bits = log₂(blockSizeBytes/4).
     int extractBlockOffset(uint32_t address) const;
-    // Update LRU counters after accessing a particular cache line.
     void updateLRU(int setIndex, int way);
+
+    // Pending transaction information.
+    bool pendingTransaction;
+    uint32_t pendingAddress;
+    BusTransactionType pendingType;
+    int pendingCycleCount;
 };
 
 #endif // CACHE_HPP
