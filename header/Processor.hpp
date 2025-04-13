@@ -15,7 +15,14 @@ public:
     void executeCycle();
     // New overload: simulate one cycle for this processor with a Bus pointer.
     void executeCycle(Bus *bus);
-    
+    // Returns the total number of instructions in this core's trace.
+    int getTotalInstructions() const { return instructions.size(); }
+
+    // Returns the total number of read instructions executed.
+    int getTotalReads() const { return totalReadInstructions; }
+
+    // Returns the total number of write instructions executed.
+    int getTotalWrites() const { return totalWriteInstructions; }
     // Check if the processor has finished processing its trace.
     bool isFinished() const;
     // Get total and idle cycle counts for statistics.
@@ -33,7 +40,8 @@ private:
     // Statistics counters.
     int totalCycles;
     int idleCycles;
-    
+    int totalReadInstructions = 0;
+    int totalWriteInstructions = 0;
     // Helper to load instructions from the trace file.
     void loadTrace(const std::string &traceFile);
 };

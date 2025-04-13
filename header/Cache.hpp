@@ -59,6 +59,20 @@ public:
 
     // New: Invalidate the block if it is in Shared state.
     void invalidateShared(uint32_t address);
+    // Returns the number of cache misses for this cache.
+    int getCacheMisses() const { return cacheMisses; }
+
+    // Returns the number of cache evictions.
+    int getEvictions() const { return cacheEvictions; }
+
+    // Returns the number of writebacks performed.
+    int getWritebacks() const { return writebacks; }
+
+    // Returns the number of bus invalidations seen by this cache.
+    int getBusInvalidations() const { return busInvalidations; }
+
+    // Returns the total data traffic (in bytes) generated on the bus by this cache.
+    int getDataTrafficBytes() const { return dataTrafficBytes; }
 
 private:
     int s;                // Number of set index bits.
@@ -83,6 +97,11 @@ private:
     uint32_t pendingAddress;
     BusTransactionType pendingType;
     int pendingCycleCount;
+    int cacheMisses = 0; // Cache misses counter.
+    int cacheEvictions = 0;
+    int writebacks = 0;
+    int busInvalidations = 0;
+    int dataTrafficBytes = 0;
 };
 
 #endif // CACHE_HPP

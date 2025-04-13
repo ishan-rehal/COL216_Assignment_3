@@ -44,9 +44,15 @@ void Processor::executeCycle()
     bool hit   = false;
 
     if (instr.op == OperationType::READ)
-        hit = l1Cache->read(instr.address, dummy, bus);   // ← pass bus
-    else
-        hit = l1Cache->write(instr.address, dummy, bus);  // ← pass bus
+        {
+            hit = l1Cache->read(instr.address, dummy, bus); // ← pass bus
+            totalReadInstructions++;
+        }
+    else if (instr.op == OperationType::WRITE)
+        {
+            hit = l1Cache->write(instr.address, dummy, bus); // ← pass bus
+            totalWriteInstructions++;
+        }
 
     totalCycles++;          // one core cycle always elapses
 

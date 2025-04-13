@@ -105,6 +105,7 @@ bool Cache::read(uint32_t address, int &cycles, Bus *bus)
     pendingAddress = address;
     pendingType = BusTransactionType::BusRd;
     pendingCycleCount = -1;
+    cacheMisses++;
     return false;
 }
 
@@ -158,6 +159,7 @@ bool Cache::write(uint32_t address, int &cycles, Bus *bus)
     pendingAddress = address;
     pendingType = BusTransactionType::BusRdWITWr;
     pendingCycleCount = -1;
+    cacheMisses++;
     return false;
 }
 
@@ -168,10 +170,22 @@ void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address,
         return;
     if (pendingCycleCount == -1) {
         pendingCycleCount = delay; // Set the computed delay, but do not clear the pending flag yet.
+
+        if(delay != 100)
+        {
+            dataTrafficBytes += blockSizeBytes;
+        }
+        else
+        {
+            dataTrafficBytes += blockSizeBytes;
+            cacheEvictions++;
+        }
+        
         // Optionally, if your design installs the block immediately, do that here.
         int setIndex = extractSetIndex(address);
         uint32_t tag = extractTag(address);
         int victim = 0;
+        
         for (int way = 0; way < E; ++way) {
             if (!meta[setIndex][way].valid) {
                 victim = way;
@@ -180,6 +194,15 @@ void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address,
             if (meta[setIndex][way].lruCounter > meta[setIndex][victim].lruCounter) {
                 victim = way;
             }
+        }
+        if (meta[setIndex][victim].valid) {
+            // Evict the victim block.
+            if (meta[setIndex][victim].dirty) {
+                writebacks++;
+                // dataTrafficBytes += blockSizeBytes;
+            }
+            // meta[setIndex][victim].valid = false;
+            
         }
         if (type == BusTransactionType::BusRd) {
             tagArray.tags[setIndex][victim] = tag;
@@ -267,6 +290,13 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                     meta[setIndex][way].state == MESIState::Exclusive ||
                     meta[setIndex][way].state == MESIState::Shared)
                 {
+
+                    if(meta[setIndex][way].state == MESIState::Modified)
+                    {
+                        writebacks++;
+                        dataTrafficBytes += blockSizeBytes;
+                    }
+                    
                     meta[setIndex][way].state = MESIState::Shared;
                     // Clear the dirty flag since a write-back is assumed.
                     meta[setIndex][way].dirty = false;
@@ -277,8 +307,11 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                 meta[setIndex][way].state = MESIState::Invalid;
                 meta[setIndex][way].valid = false;
                 meta[setIndex][way].dirty = false;
+                busInvalidations++;
+                
                 break;
             case BusTransactionType::BusUpgr:
+                busInvalidations++;
                 // BusUpgr is handled by processUpgrade in the Bus.
                 break;
             }

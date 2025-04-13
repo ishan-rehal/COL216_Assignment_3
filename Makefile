@@ -23,8 +23,12 @@ $(TARGET): $(OBJECTS)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Debug build target: add the -DDEBUG flag.
+debug: CXXFLAGS += -DDEBUG
+debug: clean all
+
 # Clean up
 clean:
 	rm -f $(OBJECTS) $(TARGET)
 
-.PHONY: all clean
+.PHONY: all clean debug

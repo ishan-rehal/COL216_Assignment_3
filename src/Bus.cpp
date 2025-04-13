@@ -10,6 +10,7 @@ Bus::Bus()
 void Bus::addTransaction(const BusTransaction &transaction)
 {
     // If the transaction is an upgrade, enqueue it in the upgrade queue.
+    totalBusTransactions++;
     if (transaction.type == BusTransactionType::BusUpgr)
     {
         upgradeQueue.push_back(transaction);
@@ -54,6 +55,18 @@ void Bus::resolveTransactions(const std::vector<class Cache *> &caches)
 
     // Process only the transaction at the front of the FIFO queue.
     BusTransaction tx = transactions.front();
+
+    // --- Begin: Snooping all caches for a non-upgrade transaction ---
+    // Call handleBusTransaction for each cache (except the source) to update MESI states.
+    for (auto cache : caches)
+    {
+        if (cache->getProcessorId() != tx.sourceProcessorId)
+        {
+            cache->handleBusTransaction(tx);
+        }
+    }
+    // --- End: Snooping ---
+
     Cache *issuingCache = nullptr;
     for (auto cache : caches)
     {
@@ -100,4 +113,13 @@ void Bus::clearTransactions()
 {
     transactions.clear();
     upgradeQueue.clear();
+}
+
+int Bus::updateBusTrafficBytes(const std::vector<Cache*>& caches){
+    int total = 0;
+    for (auto cache : caches) {
+        total += cache->getDataTrafficBytes();
+    }
+    this->busTrafficBytes = total;
+    return total;
 }
