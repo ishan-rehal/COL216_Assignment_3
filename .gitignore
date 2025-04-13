@@ -1,0 +1,19 @@
+# Build artifacts
+*.o
+*.obj
+*.exe
+*.out
+*.log
+L1simulate
+
+# Temporary files and editor backups
+*~
+*.swp
+*.swo
+
+# Build directories
+build/
+
+# System files
+.DS_Store
+Thumbs.db
