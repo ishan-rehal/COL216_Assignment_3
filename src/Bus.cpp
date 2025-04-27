@@ -80,26 +80,36 @@ void Bus::resolveTransactions(const std::vector<class Cache *> &caches)
         return;
 
     // If the issuing cache's pending transaction is still in progress...
-    if (issuingCache->isTransactionPending())
-    {
-        if (issuingCache->getPendingCycleCount() == -1)
-        {
-            int delay = 100; // Default memory fetch delay.
-            if (tx.type == BusTransactionType::BusRd)
-            {
-                int n = caches[0]->getBlockSizeBytes() / 4; // number of words per block
+    if (issuingCache->isTransactionPending()) {
+        if (issuingCache->getPendingCycleCount() == -1) {
+            int delay = 100;
+            // inside resolveTransactions, where you compute delay…
+            if (tx.type == BusTransactionType::BusRd) {
+                int n = caches[0]->getBlockSizeBytes()/4;
                 bool copyAvailable = false;
-                for (auto cache : caches)
-                {
-                    if (cache->getProcessorId() == tx.sourceProcessorId)
-                        continue;
-                    if (cache->hasBlock(tx.address))
+                int supplierId = -1;
+                for (auto cache : caches) {
+                    if (cache->getProcessorId() == tx.sourceProcessorId) continue;
+                    if (cache->hasBlock(tx.address)) {
                         copyAvailable = true;
+                        supplierId = cache->getProcessorId();
+                        break;                // we only need one supplier
+                    }
                 }
-                if (copyAvailable)
+                if (copyAvailable) {
                     delay = 2 * n;
+                    std::cout << "[Bus] Cache‑to‑cache supply from Core "
+                            << supplierId 
+                            << " for addr 0x" << std::hex << tx.address << std::dec
+                            << " (delay=" << delay << ")\n";
+                } else {
+                    delay = 100;
+                    std::cout << "[Bus] Memory supply for addr 0x" << std::hex << tx.address << std::dec
+                            << " (delay=100)\n";
+                }
             }
             issuingCache->resolvePendingTransaction(tx.type, tx.address, delay);
+
         }
     }
     else

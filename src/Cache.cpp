@@ -6,6 +6,17 @@
 #include <cmath>
 #include <iostream>
 
+// Helper to convert MESIState to string for debugging
+static const char* mesiStateToString(MESIState state) {
+    switch (state) {
+        case MESIState::Invalid:   return "Invalid";
+        case MESIState::Shared:    return "Shared";
+        case MESIState::Exclusive: return "Exclusive";
+        case MESIState::Modified:  return "Modified";
+        default:                   return "Unknown";
+    }
+}
+
 //------------------------------------------------------------------
 // Constructor: Initialize the cache.
 Cache::Cache(int s, int E, int b, int processorId)
@@ -22,10 +33,8 @@ Cache::Cache(int s, int E, int b, int processorId)
       pendingCycleCount(0)
 {
     meta.resize(numSets, std::vector<CacheLineMeta>(E));
-    for (int set = 0; set < numSets; ++set)
-    {
-        for (int way = 0; way < E; ++way)
-        {
+    for (int set = 0; set < numSets; ++set) {
+        for (int way = 0; way < E; ++way) {
             meta[set][way].valid = false;
             meta[set][way].dirty = false;
             meta[set][way].state = MESIState::Invalid;
@@ -36,31 +45,24 @@ Cache::Cache(int s, int E, int b, int processorId)
 
 //------------------------------------------------------------------
 // Extraction Functions.
-uint32_t Cache::extractTag(uint32_t address) const
-{
-    // (Original implementation assumed word addressing; adjust as needed.)
-    return address >> (s + (b));
+uint32_t Cache::extractTag(uint32_t address) const {
+    return address >> (s + b);
 }
 
-int Cache::extractSetIndex(uint32_t address) const
-{
-    return (address >> (b)) & ((1 << s) - 1);
+int Cache::extractSetIndex(uint32_t address) const {
+    return (address >> b) & ((1 << s) - 1);
 }
 
-int Cache::extractBlockOffset(uint32_t address) const
-{
+int Cache::extractBlockOffset(uint32_t address) const {
     return ((address / 4)) % (blockSizeBytes / 4);
 }
 
 //------------------------------------------------------------------
 // LRU Update Function.
-void Cache::updateLRU(int setIndex, int way)
-{
+void Cache::updateLRU(int setIndex, int way) {
     meta[setIndex][way].lruCounter = 0;
-    for (int i = 0; i < E; ++i)
-    {
-        if (i != way && meta[setIndex][i].valid)
-        {
+    for (int i = 0; i < E; ++i) {
+        if (i != way && meta[setIndex][i].valid) {
             meta[setIndex][i].lruCounter++;
         }
     }
@@ -68,37 +70,32 @@ void Cache::updateLRU(int setIndex, int way)
 
 //------------------------------------------------------------------
 // Basic read (non-bus-aware).
-bool Cache::read(uint32_t address, int &cycles)
-{
+bool Cache::read(uint32_t address, int &cycles) {
     if (pendingTransaction)
         return false;
     return read(address, cycles, nullptr);
 }
 
 // Bus-aware read.
-bool Cache::read(uint32_t address, int &cycles, Bus *bus)
-{
+bool Cache::read(uint32_t address, int &cycles, Bus *bus) {
     if (pendingTransaction)
         return false;
     int setIndex = extractSetIndex(address);
     uint32_t tag = extractTag(address);
 
-    for (int way = 0; way < E; ++way)
-    {
-        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag)
-        {
+    for (int way = 0; way < E; ++way) {
+        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag) {
             updateLRU(setIndex, way);
             cycles = 1;
             return true;
         }
     }
     // Miss: issue a BusRd transaction.
-    if (bus)
-    {
+    if (bus) {
         BusTransaction tx;
         tx.type = BusTransactionType::BusRd;
         tx.address = address;
-        tx.sourceProcessorId = this->processorId;
+        tx.sourceProcessorId = processorId;
         bus->addTransaction(tx);
     }
     pendingTransaction = true;
@@ -111,48 +108,48 @@ bool Cache::read(uint32_t address, int &cycles, Bus *bus)
 
 //------------------------------------------------------------------
 // Basic write (non-bus-aware).
-bool Cache::write(uint32_t address, int &cycles)
-{
+bool Cache::write(uint32_t address, int &cycles) {
     if (pendingTransaction)
         return false;
     return write(address, cycles, nullptr);
 }
 
 // Bus-aware write.
-bool Cache::write(uint32_t address, int &cycles, Bus *bus)
-{
+bool Cache::write(uint32_t address, int &cycles, Bus *bus) {
     if (pendingTransaction)
         return false;
     int setIndex = extractSetIndex(address);
     uint32_t tag = extractTag(address);
 
-    for (int way = 0; way < E; ++way)
-    {
-        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag)
-        {
-            // If the block is in Shared state, issue a BusUpgr transaction.
-            if (meta[setIndex][way].state == MESIState::Shared && bus)
-            {
+    for (int way = 0; way < E; ++way) {
+        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag) {
+            // Shared->Modified upgrade
+            if (meta[setIndex][way].state == MESIState::Shared && bus) {
                 BusTransaction tx;
                 tx.type = BusTransactionType::BusUpgr;
                 tx.address = address;
-                tx.sourceProcessorId = this->processorId;
+                tx.sourceProcessorId = processorId;
                 bus->addTransaction(tx);
             }
             meta[setIndex][way].dirty = true;
+            MESIState oldState = meta[setIndex][way].state;
             meta[setIndex][way].state = MESIState::Modified;
+            std::cout << "[Cache " << processorId << "] WRITE hit at set " << setIndex
+                      << ", way " << way << ", tag 0x" << std::hex << tag << std::dec
+                      << ", " << mesiStateToString(oldState)
+                      << " -> " << mesiStateToString(meta[setIndex][way].state)
+                      << std::endl;
             updateLRU(setIndex, way);
             cycles = 1;
             return true;
         }
     }
     // Write miss: issue a BusRdWITWr transaction.
-    if (bus)
-    {
+    if (bus) {
         BusTransaction tx;
         tx.type = BusTransactionType::BusRdWITWr;
         tx.address = address;
-        tx.sourceProcessorId = this->processorId;
+        tx.sourceProcessorId = processorId;
         bus->addTransaction(tx);
     }
     pendingTransaction = true;
@@ -169,23 +166,20 @@ void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address,
     if (!pendingTransaction || pendingAddress != address)
         return;
     if (pendingCycleCount == -1) {
-        pendingCycleCount = delay; // Set the computed delay, but do not clear the pending flag yet.
+        pendingCycleCount = delay; // set delay
 
-        if(delay != 100)
-        {
+        // update traffic and eviction counters
+        if (delay != 100) {
             dataTrafficBytes += blockSizeBytes;
-        }
-        else
-        {
+        } else {
             dataTrafficBytes += blockSizeBytes;
             cacheEvictions++;
         }
-        
-        // Optionally, if your design installs the block immediately, do that here.
+
         int setIndex = extractSetIndex(address);
         uint32_t tag = extractTag(address);
         int victim = 0;
-        
+        // find victim via LRU or empty
         for (int way = 0; way < E; ++way) {
             if (!meta[setIndex][way].valid) {
                 victim = way;
@@ -195,75 +189,57 @@ void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address,
                 victim = way;
             }
         }
-        if (meta[setIndex][victim].valid) {
-            // Evict the victim block.
-            if (meta[setIndex][victim].dirty) {
-                writebacks++;
-                // dataTrafficBytes += blockSizeBytes;
-            }
-            // meta[setIndex][victim].valid = false;
-            
+        // evict if needed
+        if (meta[setIndex][victim].valid && meta[setIndex][victim].dirty) {
+            writebacks++;
         }
+        MESIState oldState = meta[setIndex][victim].state;
+
+        // install new block
+        tagArray.tags[setIndex][victim] = tag;
+        meta[setIndex][victim].valid = true;
         if (type == BusTransactionType::BusRd) {
-            tagArray.tags[setIndex][victim] = tag;
-            meta[setIndex][victim].valid = true;
             meta[setIndex][victim].dirty = false;
-            meta[setIndex][victim].state = (delay == 100) ? MESIState::Exclusive : MESIState::Shared;
+            meta[setIndex][victim].state = (delay == 100)
+                ? MESIState::Exclusive : MESIState::Shared;
         } else {
-            tagArray.tags[setIndex][victim] = tag;
-            meta[setIndex][victim].valid = true;
             meta[setIndex][victim].dirty = true;
             meta[setIndex][victim].state = MESIState::Modified;
         }
         updateLRU(setIndex, victim);
+
+        std::cout << "[Cache " << processorId << "] Installed block at set " << setIndex
+              << ", way " << victim << ", tag 0x" << std::hex << tag << std::dec
+              << ", " << mesiStateToString(oldState)
+              << " -> " << mesiStateToString(meta[setIndex][victim].state)
+              << "\n";
     }
-    // Do NOT clear pendingTransaction immediately here.
-    // Instead, once decrementPendingCycle() is called enough times (until delay becomes 0),
-    // then pendingTransaction will be cleared.
-}
-
-
-//------------------------------------------------------------------
-// Returns the current pending cycle count.
-int Cache::getPendingCycleCount() const
-{
-    return pendingCycleCount;
 }
 
 //------------------------------------------------------------------
-// Indicates whether a transaction is pending.
-bool Cache::isTransactionPending() const
-{
-    return pendingTransaction;
-}
+int Cache::getPendingCycleCount() const { return pendingCycleCount; }
+bool Cache::isTransactionPending() const { return pendingTransaction; }
 
-//------------------------------------------------------------------
-// Called each cycle to decrement the pending transaction's delay.
 void Cache::decrementPendingCycle() {
     if (pendingTransaction && pendingCycleCount > 0) {
         pendingCycleCount--;
         if (pendingCycleCount == 0) {
-            // Now that the delay is over, clear the pending flag.
             pendingTransaction = false;
         }
     }
 }
 
-
 //------------------------------------------------------------------
 // Utility: Checks if this cache holds the block for a given address.
-// Returns true only if the block is in Shared or Exclusive state.
-bool Cache::hasBlock(uint32_t address) const
-{
+bool Cache::hasBlock(uint32_t address) const {
     int setIndex = extractSetIndex(address);
     uint32_t tag = extractTag(address);
-    for (int way = 0; way < E; ++way)
-    {
-        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag)
-        {
+    for (int way = 0; way < E; ++way) {
+        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag) {
             if (meta[setIndex][way].state == MESIState::Shared ||
-                meta[setIndex][way].state == MESIState::Exclusive)
+                meta[setIndex][way].state == MESIState::Exclusive) {
                 return true;
+            }
         }
     }
     return false;
@@ -271,69 +247,73 @@ bool Cache::hasBlock(uint32_t address) const
 
 //------------------------------------------------------------------
 // Bus transaction snooping: Updates MESI state for local copies.
-void Cache::handleBusTransaction(const BusTransaction &tx)
-{
-    // Ignore transactions originating from this cache.
-    if (this->processorId == tx.sourceProcessorId)
+void Cache::handleBusTransaction(const BusTransaction &tx) {
+    if (processorId == tx.sourceProcessorId)
         return;
     int setIndex = extractSetIndex(tx.address);
     uint32_t tag = extractTag(tx.address);
-    for (int way = 0; way < E; ++way)
-    {
-        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag)
-        {
-            switch (tx.type)
-            {
-            case BusTransactionType::BusRd:
-                // Downgrade to Shared if in Modified, Exclusive, or Shared.
-                if (meta[setIndex][way].state == MESIState::Modified ||
-                    meta[setIndex][way].state == MESIState::Exclusive ||
-                    meta[setIndex][way].state == MESIState::Shared)
-                {
-
-                    if(meta[setIndex][way].state == MESIState::Modified)
-                    {
-                        writebacks++;
-                        dataTrafficBytes += blockSizeBytes;
-                    }
-                    
-                    meta[setIndex][way].state = MESIState::Shared;
-                    // Clear the dirty flag since a write-back is assumed.
-                    meta[setIndex][way].dirty = false;
+    for (int way = 0; way < E; ++way) {
+        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag) {
+            MESIState oldState = meta[setIndex][way].state;
+            switch (tx.type) {
+              case BusTransactionType::BusRd:
+                // Only downgrade M→S or E→S
+                if (oldState==MESIState::Modified || oldState==MESIState::Exclusive) {
+                  if (oldState==MESIState::Modified) {
+                    writebacks++;
+                    dataTrafficBytes+=blockSizeBytes;
+                  }
+                  meta[setIndex][way].state = MESIState::Shared;
+                  meta[setIndex][way].dirty = false;
+                  std::cout << "[Cache " << processorId << "] Snooped BusRd at set " << setIndex
+                            << ", way " << way << ", tag 0x" << std::hex<<tag<<std::dec
+                            << ", " << mesiStateToString(oldState)
+                            << " -> Shared\n";
                 }
                 break;
-            case BusTransactionType::BusRdX:
-            case BusTransactionType::BusRdWITWr:
-                meta[setIndex][way].state = MESIState::Invalid;
-                meta[setIndex][way].valid = false;
-                meta[setIndex][way].dirty = false;
-                busInvalidations++;
-                
-                break;
-            case BusTransactionType::BusUpgr:
-                busInvalidations++;
-                // BusUpgr is handled by processUpgrade in the Bus.
-                break;
+                case BusTransactionType::BusRdX:
+                case BusTransactionType::BusRdWITWr:
+                    meta[setIndex][way].state = MESIState::Invalid;
+                    meta[setIndex][way].valid = false;
+                    meta[setIndex][way].dirty = false;
+                    std::cout << "[Cache " << processorId << "] Snooped BusRdX/WITWr at set "
+                    << setIndex << ", way " << way << ", tag 0x" << std::hex<<tag<<std::dec
+                    << ", " << mesiStateToString(oldState)
+                    << " -> Invalid\n";
+                    busInvalidations++;
+                    break;
+                case BusTransactionType::BusUpgr:
+                    busInvalidations++;
+                    meta[setIndex][way].state = MESIState::Invalid;
+                    meta[setIndex][way].valid = false;
+                    meta[setIndex][way].dirty = false;
+                    std::cout << "[Cache " << processorId << "] Snooped BusUpgr at set " << setIndex
+                    << ", way " << way << ", tag 0x" << std::hex<<tag<<std::dec
+                    << ", " << mesiStateToString(oldState)
+                    << " -> Invalid\n";
+                    break;
             }
         }
     }
 }
+
 //------------------------------------------------------------------
 // New function: Invalidate the block if it is in the Shared state.
-// This is called by the Bus when processing a BusUpgr transaction.
-void Cache::invalidateShared(uint32_t address)
-{
+void Cache::invalidateShared(uint32_t address) {
     int setIndex = extractSetIndex(address);
     uint32_t tag = extractTag(address);
-    for (int way = 0; way < E; ++way)
-    {
-        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag)
-        {
-            if (meta[setIndex][way].state == MESIState::Shared)
-            {
+    for (int way = 0; way < E; ++way) {
+        if (meta[setIndex][way].valid && tagArray.tags[setIndex][way] == tag) {
+            if (meta[setIndex][way].state == MESIState::Shared) {
+                MESIState oldState = meta[setIndex][way].state;
                 meta[setIndex][way].state = MESIState::Invalid;
                 meta[setIndex][way].valid = false;
                 meta[setIndex][way].dirty = false;
+                //busInvalidations++;
+                std::cout << "[Cache " << processorId << "] invalidateShared at set " << setIndex
+                          << ", way " << way << ", tag 0x" << std::hex << tag << std::dec
+                          << ", " << mesiStateToString(oldState)
+                          << " -> Invalid" << std::endl;
             }
         }
     }
