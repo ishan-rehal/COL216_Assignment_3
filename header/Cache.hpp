@@ -10,6 +10,8 @@
 // Define MESI protocol states.
 enum class MESIState { Modified, Exclusive, Shared, Invalid };
 
+enum class HasBlockState { HasBlock, NoBlock, HasBlockBeingWrittenBack };
+
 // Metadata for each cache line.
 struct CacheLineMeta {
     bool valid;
@@ -25,7 +27,7 @@ public:
     // E: associativity (number of ways = 2^E)
     // b: block bits (blockSizeBytes = 2^b)
     // processorId: identifier for the processor owning this cache.
-    Cache(int s, int E, int b, int processorId);
+    Cache(int s, int E, int b, int processorId, Bus *busPtr);
 
     // Basic read/write functions.
     bool read(uint32_t address, int &cycles);
@@ -74,6 +76,13 @@ public:
     // Returns the total data traffic (in bytes) generated on the bus by this cache.
     int getDataTrafficBytes() const { return dataTrafficBytes; }
 
+    void printCacheInfo() const;
+
+    void installPendingBlock();
+
+    void setPendingWritebackCycles(int cycles) { pendingwritebackCycles = cycles; }
+    bool is_writing_to_mem = false; // Indicates if the cache is writing to memory.
+
 private:
     int s;                // Number of set index bits.
     int E;                // Associativity exponent (number of ways = 2^E).
@@ -102,6 +111,12 @@ private:
     int writebacks = 0;
     int busInvalidations = 0;
     int dataTrafficBytes = 0;
+    int pendingDelay = 0; // Delay for pending transactions.
+    bool is_writeback = false; // Indicates if the pending transaction is a writeback.
+    bool is_mem_occupied = false; // Indicates if the memory is occupied.
+    int pendingwritebackCycles = 0; // Number of cycles for pending writeback.
+    Bus* bus;
+    
 };
 
 #endif // CACHE_HPP

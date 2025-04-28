@@ -10,7 +10,8 @@ enum class BusTransactionType
     BusRd,      // Read miss transaction.
     BusRdX,     // Write transaction (write miss or write hit when not in Shared).
     BusRdWITWr, // Read with intent to write (for write misses).
-    BusUpgr     // Upgrade: write hit on a Shared block that must cause immediate invalidation.
+    BusUpgr,     // Upgrade: write hit on a Shared block that must cause immediate invalidation.
+    BusWr
 };
 
 // Structure representing a bus transaction.
@@ -47,14 +48,23 @@ public:
     // You could update a member variable dataTrafficBytes in Bus.cpp each time a transaction is processed.
     int getBusTrafficBytes() const { return busTrafficBytes; }
     int updateBusTrafficBytes(const std::vector<Cache*>& caches);
+    void printBusinfo() const;
+    bool getPendingBusWr() const { return pendingBusWr; }
+    int getPendingBusWrCycles() const { return pendingBusWrCycles; }
+    bool hasPendingtransaction() const;
+    int getPendingBusWrSource() const { return pendingBusWrSourceId; }
 
 private:
     // FIFO queue for normal transactions.
     std::vector<BusTransaction> transactions;
     // Separate high-priority queue for upgrade transactions.
     std::vector<BusTransaction> upgradeQueue;
+    std::vector<BusTransaction> writebackQueue;
     int busTrafficBytes = 0;
     int totalBusTransactions=0;
+    bool pendingBusWr; // Indicates if a BusWr transaction is pending.
+    int pendingBusWrCycles; // Number of cycles remaining for the pending BusWr transaction.
+    int pendingBusWrSourceId; // ID of the processor that initiated the pending BusWr transaction.
 };
 
 #endif // BUS_HPP

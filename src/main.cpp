@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < numCores; ++i) {
         // Construct trace file name (e.g., "app1_proc0.trace").
         std::string traceFile = config.tracePrefix + "_proc" + std::to_string(i) + ".trace";
-        Cache* cache = new Cache(config.s, config.E, config.b, i);
+        Cache* cache = new Cache(config.s, config.E, config.b, i, &bus);
         caches.push_back(cache);
         Processor* proc = new Processor(i, traceFile, cache, &bus);
         processors.push_back(proc);
@@ -145,10 +145,21 @@ int main(int argc, char *argv[]) {
 
         allFinished = true;
         // Let each processor execute one cycle.
+        if(globalClock % 100000000 == 0) {
+            bus.printBusinfo();
+        }
         for (int i = 0; i < numCores; ++i) {
-            if (!processors[i]->isFinished()) {
+            if (!processors[i]->isFinished() || bus.hasPendingtransaction()) {
                 processors[i]->executeCycle();
                 allFinished = false;
+            }
+            // std :: cout << "Pending Bus Wr cycles ->" << bus.getPendingBusWrCycles() << "\n";
+            if(globalClock % 100000000 == 0) {
+                std::cout << "Global Clock: " << globalClock << ", Processor " << i << " executed the instruction ->. " << processors[i]->getInstructionsExecuted() << "\n";
+                
+                
+                //print cache info
+                caches[i]->printCacheInfo();
             }
         }
         // Resolve any bus transactions at the end of the cycle.
@@ -165,6 +176,9 @@ int main(int argc, char *argv[]) {
     int blockSize = (1 << config.b);
     int numWays = config.E; // (if E is the number of ways)
     int cacheSizeKB = (numSets * numWays * blockSize) / 1024;
+
+    //Print Bus info
+    // bus.printBusinfo();
 
     // Print simulation output.
     std::cout << "\nSimulation Output:\n";

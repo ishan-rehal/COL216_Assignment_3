@@ -28,6 +28,7 @@ public:
     // Get total and idle cycle counts for statistics.
     int getTotalCycles() const;
     int getIdleCycles() const;
+    int getInstructionsExecuted() const { return currentInstructionIndex; }
     
 private:
     int processorId;

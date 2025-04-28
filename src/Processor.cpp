@@ -24,10 +24,20 @@ void Processor::loadTrace(const std::string &traceFile)
 
 void Processor::executeCycle()
 {
+    // 0) If _this_ core is the one doing a 100-cycle write-back, stall:
+    if (bus->getPendingBusWr() &&
+    bus->getPendingBusWrSource() == processorId)
+    {
+        idleCycles++;
+        totalCycles++;
+        return;
+    }
+
     // If the cache has a pending transaction, decrement its pending delay.
     if (l1Cache->isTransactionPending())
     {
         l1Cache->decrementPendingCycle();
+        if(l1Cache)
         idleCycles++;
         totalCycles++;
         return;
