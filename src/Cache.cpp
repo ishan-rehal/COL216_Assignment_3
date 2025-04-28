@@ -348,6 +348,7 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                     // Writeback the block to memory
                     bus->addTransaction({BusTransactionType::BusWr, tx.address, processorId});
                     is_writing_to_mem = true;
+                    modified_invalidated = true;
                     writebacks++;
                     dataTrafficBytes += blockSizeBytes;
                 }
@@ -361,6 +362,15 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                 busInvalidations++;
                 break;
             case BusTransactionType::BusUpgr:
+            if (oldState == MESIState::Modified)
+            {
+                // Writeback the block to memory
+                bus->addTransaction({BusTransactionType::BusWr, tx.address, processorId});
+                is_writing_to_mem = true;
+                modified_invalidated = true;
+                writebacks++;
+                dataTrafficBytes += blockSizeBytes;
+            }
                 busInvalidations++;
                 meta[setIndex][way].state = MESIState::Invalid;
                 meta[setIndex][way].valid = false;

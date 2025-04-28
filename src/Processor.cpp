@@ -37,36 +37,43 @@ void Processor::executeCycle()
     if (l1Cache->isTransactionPending())
     {
         l1Cache->decrementPendingCycle();
-        if(l1Cache)
         idleCycles++;
         totalCycles++;
         return;
     }
 
+    // If no more instructions, just increment cycles
     if (currentInstructionIndex >= instructions.size())
     {
         totalCycles++;
         return;
     }
 
+    // Get the current instruction
     Instruction &instr = instructions[currentInstructionIndex];
-    int  dummy = 0;
-    bool hit   = false;
+    int dummy = 0;
+    bool hit = false;
 
     if (instr.op == OperationType::READ)
-        {
-            hit = l1Cache->read(instr.address, dummy, bus); // ← pass bus
+    {
+        hit = l1Cache->read(instr.address, dummy, bus);
+        if (hit || !l1Cache->isTransactionPending()) {
+            // Instruction completed or no transaction started
             totalReadInstructions++;
+            currentInstructionIndex++; // Only advance if instruction completed
         }
+    }
     else if (instr.op == OperationType::WRITE)
-        {
-            hit = l1Cache->write(instr.address, dummy, bus); // ← pass bus
+    {
+        hit = l1Cache->write(instr.address, dummy, bus);
+        if (hit || !l1Cache->isTransactionPending()) {
+            // Instruction completed or no transaction started
             totalWriteInstructions++;
+            currentInstructionIndex++; // Only advance if instruction completed
         }
+    }
 
-    totalCycles++;          // one core cycle always elapses
-
-    currentInstructionIndex++;
+    totalCycles++; // one core cycle always elapses
 }
 
 bool Processor::isFinished() const
@@ -78,6 +85,7 @@ bool Processor::isFinished() const
 int Processor::getTotalCycles() const
 {
     return totalCycles;
+
 }
 
 int Processor::getIdleCycles() const

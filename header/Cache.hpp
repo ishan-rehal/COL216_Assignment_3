@@ -82,6 +82,7 @@ public:
 
     void setPendingWritebackCycles(int cycles) { pendingwritebackCycles = cycles; }
     bool is_writing_to_mem = false; // Indicates if the cache is writing to memory.
+    bool modified_invalidated = false; // Indicates if the cache is invalidated after a writeback.
 
 private:
     int s;                // Number of set index bits.

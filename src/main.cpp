@@ -148,6 +148,8 @@ int main(int argc, char *argv[]) {
         if(globalClock % 100000000 == 0) {
             bus.printBusinfo();
         }
+        // Resolve any bus transactions at the end of the cycle.
+        bus.resolveTransactions(caches);
         for (int i = 0; i < numCores; ++i) {
             if (!processors[i]->isFinished() || bus.hasPendingtransaction()) {
                 processors[i]->executeCycle();
@@ -155,15 +157,14 @@ int main(int argc, char *argv[]) {
             }
             // std :: cout << "Pending Bus Wr cycles ->" << bus.getPendingBusWrCycles() << "\n";
             if(globalClock % 100000000 == 0) {
-                std::cout << "Global Clock: " << globalClock << ", Processor " << i << " executed the instruction ->. " << processors[i]->getInstructionsExecuted() << "\n";
+                // std::cout << "Global Clock: " << globalClock << ", Processor " << i << " executed the instruction ->. " << processors[i]->getInstructionsExecuted() << "\n";
                 
                 
                 //print cache info
-                caches[i]->printCacheInfo();
+                // caches[i]->printCacheInfo();
             }
         }
-        // Resolve any bus transactions at the end of the cycle.
-        bus.resolveTransactions(caches);
+        
 
         globalClock++;
     }

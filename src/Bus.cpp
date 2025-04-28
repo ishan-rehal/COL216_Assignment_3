@@ -13,6 +13,21 @@ Bus::Bus()
 
 void Bus::addTransaction(const BusTransaction &transaction)
 {
+    // Check if this processor already has a transaction in the queue
+    for (const auto& tx : transactions) {
+        if (tx.sourceProcessorId == transaction.sourceProcessorId && transaction.type != BusTransactionType::BusUpgr && transaction.type != BusTransactionType::BusWr) {
+            std::cout << "Warning: Processor " << transaction.sourceProcessorId 
+                      << " already has a transaction in the queue. Address: 0x" 
+                      << std::hex << transaction.address << std::dec << "\n";
+            // Print the instruction that caused this transaction
+            std::cout << "Transaction Type: " << static_cast<int>(transaction.type) << "\n";
+            std::cout << "Transaction Address: 0x" << std::hex << transaction.address << std::dec << "\n";
+            std::cout << "Transaction Source Processor ID: " << transaction.sourceProcessorId << "\n";
+            // You might want to return here rather than adding another transaction
+            // return;
+        }
+    }
+    
     ++totalBusTransactions;
     switch (transaction.type)
     {
@@ -23,6 +38,8 @@ void Bus::addTransaction(const BusTransaction &transaction)
 
         case BusTransactionType::BusWr:
             // Queue a write-back to memory
+            // std ::cout << "[Bus] Queuing write-back for address 0x" 
+            //           << std::hex << transaction.address << std::dec << "\n";
             writebackQueue.push_back(transaction);
             break;
 
@@ -163,6 +180,17 @@ void Bus::resolveTransactions(const std::vector<Cache *> &caches)
                 {
                     // 2·N cycles, plus 100 if that supplier is itself mid-writeback
                     delay = 2 * n + extraDelay;
+                }
+            }
+            if (tx.type == BusTransactionType::BusRdWITWr)
+            {
+                for (auto c : caches)
+                {
+                    if (c->is_writing_to_mem && c != src && c->modified_invalidated)
+                    {
+                        delay = 200;
+                        c->modified_invalidated = false; // reset the flag after processing
+                    }
                 }
             }
 

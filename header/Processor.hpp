@@ -45,6 +45,10 @@ private:
     int totalWriteInstructions = 0;
     // Helper to load instructions from the trace file.
     void loadTrace(const std::string &traceFile);
+
+    // Add these member variables:
+    bool hasWaitingInstruction = false;
+    Instruction waitingInstruction;
 };
 
 #endif // PROCESSOR_HPP
