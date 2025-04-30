@@ -8,7 +8,7 @@ This repository contains a cache simulator implementation that models a quad-cor
 - [`header`](header) - Header files for the simulator (`Cache.hpp`, `Bus.hpp`, `Processor.hpp`, `DataArray.hpp`, `TagArray.hpp`, `TraceParser.hpp`, `Debug.hpp`)
 <!-- - [`graph_tc`](graph_tc) - Test case directories containing memory access traces (e.g., `tc_1/1_0.trace`) -->
 - [`generate_and_plot.py`](generate_and_plot.py) - Python script to run simulations with different configurations and plot results
-- `L1simulate.exe`/`L1simulate` - Executable simulator for Windows/Linux (needs to be compiled)
+- `L1simulate` - Executable simulator for Windows/Linux (needs to be compiled)
 
 ## Cache Simulator Features
 
@@ -31,10 +31,7 @@ make
 ```
 Then you can run the executable as follows:
 ```bash
-# Windows
-.\L1simulate.exe -t <trace_prefix> -s <set_bits> -E <associativity> -b <block_bits>
-
-# Linux/Mac
+# Linux
 ./L1simulate -t <trace_prefix> -s <set_bits> -E <associativity> -b <block_bits>
 ```
 
