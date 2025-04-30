@@ -1,0 +1,17 @@
+test_case,parameter,max_cycles
+tc_1,default,16593790
+tc_1,sets×2,10646662
+tc_1,block×2,14055009
+tc_1,assoc×2,10438713
+tc_2,default,57394356
+tc_2,sets×2,43615256
+tc_2,block×2,39691936
+tc_2,assoc×2,44474268
+tc_3,default,56143099
+tc_3,sets×2,55889412
+tc_3,block×2,55941459
+tc_3,assoc×2,55881744
+tc_4,default,643893140
+tc_4,sets×2,643776757
+tc_4,block×2,643807304
+tc_4,assoc×2,643776898
