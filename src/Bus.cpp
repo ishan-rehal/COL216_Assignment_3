@@ -14,25 +14,26 @@ Bus::Bus()
 void Bus::addTransaction(const BusTransaction &transaction)
 {
     // Check if this processor already has a transaction in the queue
-    for (const auto& tx : transactions) {
-        if (tx.sourceProcessorId == transaction.sourceProcessorId && transaction.type != BusTransactionType::BusUpgr && transaction.type != BusTransactionType::BusWr) {
-            std::cout << "Warning: Processor " << transaction.sourceProcessorId 
-                      << " already has a transaction in the queue. Address: 0x" 
-                      << std::hex << transaction.address << std::dec << "\n";
-            // Print the instruction that caused this transaction
-            std::cout << "Transaction Type: " << static_cast<int>(transaction.type) << "\n";
-            std::cout << "Transaction Address: 0x" << std::hex << transaction.address << std::dec << "\n";
-            std::cout << "Transaction Source Processor ID: " << transaction.sourceProcessorId << "\n";
-            // You might want to return here rather than adding another transaction
-            // return;
-        }
-    }
+    // for (const auto& tx : transactions) {
+    //     if (tx.sourceProcessorId == transaction.sourceProcessorId && transaction.type != BusTransactionType::BusUpgr && transaction.type != BusTransactionType::BusWr) {
+    //         std::cout << "Warning: Processor " << transaction.sourceProcessorId 
+    //                   << " already has a transaction in the queue. Address: 0x" 
+    //                   << std::hex << transaction.address << std::dec << "\n";
+    //         // Print the instruction that caused this transaction
+    //         std::cout << "Transaction Type: " << static_cast<int>(transaction.type) << "\n";
+    //         std::cout << "Transaction Address: 0x" << std::hex << transaction.address << std::dec << "\n";
+    //         std::cout << "Transaction Source Processor ID: " << transaction.sourceProcessorId << "\n";
+    //         // You might want to return here rather than adding another transaction
+    //         // return;
+    //     }
+    // }
     
     ++totalBusTransactions;
     switch (transaction.type)
     {
         case BusTransactionType::BusUpgr:
             // Invalidate any shared copies immediately
+            busInvalidations++;
             upgradeQueue.push_back(transaction);
             break;
 
@@ -45,6 +46,11 @@ void Bus::addTransaction(const BusTransaction &transaction)
 
         default:
             // Regular loads/stores
+            if(transaction.type == BusTransactionType::BusRdX || transaction.type == BusTransactionType::BusRdWITWr) {
+                // std::cout << "[Bus] Queuing BusRdX/WITWr for address 0x" 
+                //           << std::hex << transaction.address << std::dec << "\n";
+                busInvalidations++;
+            }
             transactions.push_back(transaction);
     }
 }
@@ -139,9 +145,9 @@ void Bus::resolveTransactions(const std::vector<Cache *> &caches)
     
     // If no matching cache found, dequeue this transaction and return
     if (!src) {
-        std::cout << "No matching cache found for transaction: addr=0x" 
-                 << std::hex << tx.address 
-                 << " src=" << std::dec << tx.sourceProcessorId << "\n";
+        // std::cout << "No matching cache found for transaction: addr=0x" 
+        //          << std::hex << tx.address 
+        //          << " src=" << std::dec << tx.sourceProcessorId << "\n";
         transactions.erase(transactions.begin());
         return;
     }

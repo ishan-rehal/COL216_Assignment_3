@@ -45,7 +45,7 @@ void Processor::executeCycle()
     // If no more instructions, just increment cycles
     if (currentInstructionIndex >= instructions.size())
     {
-        totalCycles++;
+        // totalCycles++;
         return;
     }
 

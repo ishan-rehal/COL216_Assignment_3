@@ -145,9 +145,9 @@ int main(int argc, char *argv[]) {
 
         allFinished = true;
         // Let each processor execute one cycle.
-        if(globalClock % 100000000 == 0) {
-            bus.printBusinfo();
-        }
+        // if(globalClock % 100000000 == 0) {
+        //     bus.printBusinfo();
+        // }
         // Resolve any bus transactions at the end of the cycle.
         bus.resolveTransactions(caches);
         for (int i = 0; i < numCores; ++i) {
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
     printSimulationParameters(config, numSets, cacheSizeKB);
     printCoreStatistics(processors, caches);
     printBusSummary(bus, caches);
-    std::cout << "Global Clock: " << globalClock << " cycles\n";
+    // std::cout << "Global Clock: " << globalClock << " cycles\n";
 
     // Clean up.
     for (auto proc : processors) {

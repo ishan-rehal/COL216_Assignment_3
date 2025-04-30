@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < numCores; ++i) {
         // Construct trace file name (e.g., "app1_proc0.trace").
         std::string traceFile = config.tracePrefix + "_proc" + std::to_string(i) + ".trace";
-        Cache* cache = new Cache(config.s, config.E, config.b, i);
+        Cache* cache = new Cache(config.s, config.E, config.b, i, &bus);
         caches.push_back(cache);
         Processor* proc = new Processor(i, traceFile, cache, &bus);
         processors.push_back(proc);

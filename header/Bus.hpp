@@ -53,6 +53,8 @@ public:
     int getPendingBusWrCycles() const { return pendingBusWrCycles; }
     bool hasPendingtransaction() const;
     int getPendingBusWrSource() const { return pendingBusWrSourceId; }
+    // Returns the number of bus invalidations seen by this cache.
+    int getBusInvalidations() const { return busInvalidations; }
 
 private:
     // FIFO queue for normal transactions.
@@ -61,6 +63,7 @@ private:
     std::vector<BusTransaction> upgradeQueue;
     std::vector<BusTransaction> writebackQueue;
     int busTrafficBytes = 0;
+    int busInvalidations = 0; // Number of bus invalidations.
     int totalBusTransactions=0;
     bool pendingBusWr; // Indicates if a BusWr transaction is pending.
     int pendingBusWrCycles; // Number of cycles remaining for the pending BusWr transaction.

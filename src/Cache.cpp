@@ -157,6 +157,7 @@ bool Cache::write(uint32_t address, int &cycles, Bus *bus)
                 tx.sourceProcessorId = processorId;
                 bus->addTransaction(tx);
             }
+            busInvalidations++;
             meta[setIndex][way].dirty = true;
             MESIState oldState = meta[setIndex][way].state;
             meta[setIndex][way].state = MESIState::Modified;
@@ -179,6 +180,7 @@ bool Cache::write(uint32_t address, int &cycles, Bus *bus)
         tx.sourceProcessorId = processorId;
         bus->addTransaction(tx);
     }
+    busInvalidations++;
     pendingTransaction = true;
     pendingAddress = address;
     pendingType = BusTransactionType::BusRdWITWr;
@@ -205,8 +207,9 @@ void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address,
         else
         {
             dataTrafficBytes += blockSizeBytes;
-            cacheEvictions++;
+            
         }
+        
 
         int setIndex = extractSetIndex(address);
         uint32_t tag = extractTag(address);
@@ -224,6 +227,7 @@ void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address,
                 victim = way;
             }
         }
+        
         // evict if needed
         if (meta[setIndex][victim].valid && meta[setIndex][victim].dirty)
         {
@@ -238,7 +242,9 @@ void Cache::resolvePendingTransaction(BusTransactionType type, uint32_t address,
             writebacks++;
         }
         MESIState oldState = meta[setIndex][victim].state;
-
+        if(oldState != MESIState::Invalid) {
+            cacheEvictions++;
+        }
         // install new block
         tagArray.tags[setIndex][victim] = tag;
         meta[setIndex][victim].valid = true;
@@ -331,7 +337,7 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                         is_writing_to_mem = true;
                         writebacks++;
                         dataTrafficBytes += blockSizeBytes;
-                        
+                        // busInvalidations++;
                     }
                     meta[setIndex][way].state = MESIState::Shared;
                     meta[setIndex][way].dirty = false;
@@ -352,6 +358,7 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                     writebacks++;
                     dataTrafficBytes += blockSizeBytes;
                 }
+                
                 meta[setIndex][way].state = MESIState::Invalid;
                 meta[setIndex][way].valid = false;
                 meta[setIndex][way].dirty = false;
@@ -359,7 +366,7 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                 //           << setIndex << ", way " << way << ", tag 0x" << std::hex << tag << std::dec
                 //           << ", " << mesiStateToString(oldState)
                 //           << " -> Invalid\n";
-                busInvalidations++;
+                // busInvalidations++;
                 break;
             case BusTransactionType::BusUpgr:
             if (oldState == MESIState::Modified)
@@ -371,7 +378,7 @@ void Cache::handleBusTransaction(const BusTransaction &tx)
                 writebacks++;
                 dataTrafficBytes += blockSizeBytes;
             }
-                busInvalidations++;
+                // busInvalidations++;
                 meta[setIndex][way].state = MESIState::Invalid;
                 meta[setIndex][way].valid = false;
                 meta[setIndex][way].dirty = false;
