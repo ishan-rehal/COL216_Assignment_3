@@ -6,7 +6,7 @@ This repository contains a cache simulator implementation that models a quad-cor
 
 - [`src`](src) - Source code for the cache simulator (`Cache.cpp`, `Bus.cpp`, `Processor.cpp`, `main.cpp`, `StatsPrinter.cpp`, `TraceParser.cpp`)
 - [`header`](header) - Header files for the simulator (`Cache.hpp`, `Bus.hpp`, `Processor.hpp`, `DataArray.hpp`, `TagArray.hpp`, `TraceParser.hpp`, `Debug.hpp`)
-- [`graph_tc`](graph_tc) - Test case directories containing memory access traces (e.g., `tc_1/1_0.trace`)
+<!-- - [`graph_tc`](graph_tc) - Test case directories containing memory access traces (e.g., `tc_1/1_0.trace`) -->
 - [`generate_and_plot.py`](generate_and_plot.py) - Python script to run simulations with different configurations and plot results
 - `L1simulate.exe`/`L1simulate` - Executable simulator for Windows/Linux (needs to be compiled)
 
@@ -72,7 +72,7 @@ This script performs the following actions:
 7. Generates bar charts (`*.png`) for each test case, plotting the maximum execution cycles against the different parameter settings.
 8. Cleans up the temporary trace file links/copies.
 
-## Test Cases
+<!-- ## Test Cases
 
 The repository includes four test cases within the [`graph_tc`](graph_tc) directory:
 - `tc_1`: Contains basic read/write patterns.
@@ -80,7 +80,7 @@ The repository includes four test cases within the [`graph_tc`](graph_tc) direct
 - `tc_3`: Designed to exhibit temporal locality.
 - `tc_4`: Designed to stress cache coherence with potential contention between cores.
 
-Each test case directory contains trace files for four cores, named like `1_0.trace`, `1_1.trace`, `1_2.trace`, `1_3.trace`.
+Each test case directory contains trace files for four cores, named like `1_0.trace`, `1_1.trace`, `1_2.trace`, `1_3.trace`. -->
 
 ## Output and Analysis
 
