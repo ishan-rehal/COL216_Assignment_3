@@ -28,7 +28,7 @@ void Processor::executeCycle()
     if (bus->getPendingBusWr() &&
     bus->getPendingBusWrSource() == processorId)
     {
-        idleCycles++;
+        // idleCycles++;
         totalCycles++;
         return;
     }
@@ -36,8 +36,12 @@ void Processor::executeCycle()
     // If the cache has a pending transaction, decrement its pending delay.
     if (l1Cache->isTransactionPending())
     {
+        if(l1Cache->getPendingCycleCount() == -1)
+        {
+            idleCycles++;
+        }
         l1Cache->decrementPendingCycle();
-        idleCycles++;
+        
         totalCycles++;
         return;
     }

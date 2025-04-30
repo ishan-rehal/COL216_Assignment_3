@@ -106,7 +106,7 @@ private:
     bool pendingTransaction;
     uint32_t pendingAddress;
     BusTransactionType pendingType;
-    int pendingCycleCount;
+    int pendingCycleCount=0;
     int cacheMisses = 0; // Cache misses counter.
     int cacheEvictions = 0;
     int writebacks = 0;
