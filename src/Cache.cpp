@@ -156,8 +156,9 @@ bool Cache::write(uint32_t address, int &cycles, Bus *bus)
                 tx.address = address;
                 tx.sourceProcessorId = processorId;
                 bus->addTransaction(tx);
+                busInvalidations++;
             }
-            busInvalidations++;
+            
             meta[setIndex][way].dirty = true;
             MESIState oldState = meta[setIndex][way].state;
             meta[setIndex][way].state = MESIState::Modified;

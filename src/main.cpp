@@ -94,7 +94,7 @@ void printCoreStatistics(const std::vector<Processor*>& processors, const std::v
         std::cout << "Total Instructions: " << totalInstr << "\n";
         std::cout << "Total Reads: " << totalReads << "\n";
         std::cout << "Total Writes: " << totalWrites << "\n";
-        std::cout << "Total Execution Cycles: " << totalCycles << "\n";
+        std::cout << "Total Execution Cycles: " << totalCycles - idleCycles << "\n";
         std::cout << "Idle Cycles: " << idleCycles << "\n";
         std::cout << "Cache Misses: " << misses << "\n";
         std::cout << "Cache Miss Rate: " << std::fixed << std::setprecision(2) << missRate << "%\n";
