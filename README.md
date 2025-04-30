@@ -23,8 +23,13 @@ This repository contains a cache simulator implementation that models a quad-cor
 
 ## Running the Simulator
 
-The simulator can be compiled (using a suitable C++ compiler and potentially a Makefile, not provided here) and run directly with specific parameters:
+The simulator can be compiled by using the make command:
 
+```bash
+#MakeFile works for Linux only
+make
+```
+Then you can run the executable as follows:
 ```bash
 # Windows
 .\L1simulate.exe -t <trace_prefix> -s <set_bits> -E <associativity> -b <block_bits>
